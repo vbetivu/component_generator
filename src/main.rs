@@ -1,9 +1,9 @@
 use std::{env, process};
 
-use file_generator::configs::cli_config::CLIConfig;
+use file_generator::config::Config;
 
 fn main() {
-    let cli_config = CLIConfig::new(env::args()).unwrap_or_else(|err| {
+    let cli_config = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Error parsing the arguments: {}", err);
         process::exit(1);
     });
