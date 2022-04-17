@@ -9,7 +9,7 @@ use std::{
 
 use config::Config;
 use constants::{COMPONENT_REPLACE_PATTERN, TEMPLATE_FOLDER, TRANSFORM_KEBAB_CASE};
-use utils::{get_dir_files, pascal_to_kebab};
+use utils::{get_dir_files, pascal_to_kebab, select};
 
 struct Template {
     config: Config,
@@ -22,21 +22,21 @@ impl Template {
     }
 
     fn generate(&self) -> Result<(), String> {
-        println!("{:#?}", self.config);
-        println!("{:#?}", self.templates);
-
         let destination_dir = Path::new(&self.config.dir);
 
         if !destination_dir.is_dir() {
             return Result::Err(String::from("Destination dir not found."));
         }
 
-        fs::create_dir(destination_dir.join(&self.config.component_name))
-            .map_err(|err| -> String { err.to_string() })?;
+        let component_dir = destination_dir.join(&self.config.component_name);
+
+        fs::create_dir(&component_dir).map_err(|err| -> String { err.to_string() })?;
 
         for template in &self.templates {
             self.create_file(template)?;
         }
+
+        println!("{}", component_dir.to_str().unwrap());
 
         return Result::Ok(());
     }
@@ -85,8 +85,13 @@ pub fn run(config: Config) -> Result<(), String> {
     }
 
     let templates = get_dir_files(dir_path).map_err(|err| -> String { err.to_string() })?;
+    let selected_templates = if config.generate_all {
+        templates
+    } else {
+        select(templates)?
+    };
 
-    let template = Template::new(config, templates);
+    let template = Template::new(config, selected_templates);
 
     template.generate()?;
 
