@@ -1,64 +1,94 @@
 pub mod config;
 pub mod constants;
+pub mod utils;
 
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use config::Config;
-use constants::TEMPLATE_FOLDER;
+use constants::{COMPONENT_REPLACE_PATTERN, TEMPLATE_FOLDER, TRANSFORM_KEBAB_CASE};
+use utils::{get_dir_files, pascal_to_kebab};
 
 struct Template {
     config: Config,
+    templates: Vec<PathBuf>,
 }
 
 impl Template {
-    fn new(config: Config) -> Template {
-        Template { config }
+    fn new(config: Config, templates: Vec<PathBuf>) -> Template {
+        Template { config, templates }
     }
 
-    fn generate(&mut self) -> Result<(), String> {
+    fn generate(&self) -> Result<(), String> {
         println!("{:#?}", self.config);
+        println!("{:#?}", self.templates);
 
-        let dir_path = Path::new(TEMPLATE_FOLDER);
+        let destination_dir = Path::new(&self.config.dir);
 
-        if !dir_path.is_dir() {
-            return Result::Err(format!(
-                "Template folder is missing. Please create \"{}\".",
-                TEMPLATE_FOLDER
-            ));
+        if !destination_dir.is_dir() {
+            return Result::Err(String::from("Destination dir not found."));
         }
 
-        let templates = read_templates(dir_path).unwrap();
-        println!("{:#?}", templates);
+        fs::create_dir(destination_dir.join(&self.config.component_name))
+            .map_err(|err| -> String { err.to_string() })?;
+
+        for template in &self.templates {
+            self.create_file(template)?;
+        }
 
         return Result::Ok(());
     }
-}
 
-fn read_templates(path: &Path) -> Result<Vec<PathBuf>, io::Error> {
-    let mut templates: Vec<PathBuf> = Vec::new();
+    fn create_file(&self, template: &PathBuf) -> Result<(), String> {
+        let mut contents = fs::read_to_string(template).unwrap();
+        let destination = Path::new(&self.config.dir)
+            .join(&self.config.component_name)
+            .join(
+                template
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name),
+            );
 
-    for template_entry in fs::read_dir(path)? {
-        let template_entry = template_entry?;
-        let path = template_entry.path();
+        contents = contents.replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name);
 
-        if !path.is_dir() {
-            templates.push(path);
+        for (arg, value) in &self.config.extra_args {
+            match value.as_str() {
+                TRANSFORM_KEBAB_CASE => {
+                    contents = contents.replace(
+                        &format!("{{{{{}}}}}", arg),
+                        &pascal_to_kebab(&self.config.component_name),
+                    )
+                }
+                _ => contents = contents.replace(&format!("{{{{{}}}}}", arg), value),
+            }
         }
-    }
 
-    if templates.len() != 0 {
-        Result::Ok(templates)
-    } else {
-        Result::Err(io::Error::new(io::ErrorKind::Other, "Empty directory."))
+        fs::write(destination, contents).map_err(|err| -> String { err.to_string() })?;
+
+        Result::Ok(())
     }
 }
 
 pub fn run(config: Config) -> Result<(), String> {
-    let mut text = Template::new(config);
+    let dir_path = Path::new(TEMPLATE_FOLDER);
 
-    text.generate()?;
+    if !dir_path.is_dir() {
+        return Result::Err(format!(
+            "Template folder is missing. Please create \"{}\".",
+            TEMPLATE_FOLDER
+        ));
+    }
+
+    let templates = get_dir_files(dir_path).map_err(|err| -> String { err.to_string() })?;
+
+    let template = Template::new(config, templates);
+
+    template.generate()?;
 
     return Result::Ok(());
 }

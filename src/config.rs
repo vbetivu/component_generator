@@ -2,9 +2,7 @@ use std::{collections::HashMap, env};
 
 use regex::Regex;
 
-const ALL_ARG: &str = "-a";
-const DIR_ARG: &str = "-d";
-const REGEX_ARG: &str = "-r";
+use crate::constants::{ALL_ARG, DIR_ARG, REGEX_ARG};
 
 #[derive(Debug)]
 pub struct Config {
@@ -37,14 +35,11 @@ impl Config {
                     }
                     extra_arg if extra_arg.starts_with("-") => {
                         extra_args.insert(
-                            String::from(extra_arg),
-                            args.next()
-                                .expect(&format!(
-                                    "No value provided for: {} argument.",
-                                    extra_arg.clone()
-                                ))
-                                .trim_start_matches("-")
-                                .to_string(),
+                            extra_arg.trim_start_matches("-").to_string(),
+                            args.next().expect(&format!(
+                                "No value provided for: {} argument.",
+                                extra_arg.clone()
+                            )),
                         );
                     }
 
