@@ -28,31 +28,33 @@ impl Template {
             return Result::Err(String::from("Destination dir not found."));
         }
 
-        let component_dir = destination_dir.join(&self.config.component_name);
+        let destination_dir = destination_dir.join(&self.config.component_name);
 
-        fs::create_dir(&component_dir).map_err(|err| -> String { err.to_string() })?;
+        fs::create_dir(&destination_dir).map_err(|err| -> String { err.to_string() })?;
+
+        println!("Created: {}", destination_dir.to_str().unwrap());
 
         for template in &self.templates {
-            self.create_file(template)?;
+            self.create_template_file(&template, &destination_dir)?;
         }
-
-        println!("{}", component_dir.to_str().unwrap());
 
         return Result::Ok(());
     }
 
-    fn create_file(&self, template: &PathBuf) -> Result<(), String> {
+    fn create_template_file(
+        &self,
+        template: &PathBuf,
+        destination_dir: &PathBuf,
+    ) -> Result<(), String> {
         let mut contents = fs::read_to_string(template).unwrap();
-        let destination = Path::new(&self.config.dir)
-            .join(&self.config.component_name)
-            .join(
-                template
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name),
-            );
+        let destination = destination_dir.join(
+            template
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name),
+        );
 
         contents = contents.replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name);
 
@@ -68,7 +70,9 @@ impl Template {
             }
         }
 
-        fs::write(destination, contents).map_err(|err| -> String { err.to_string() })?;
+        fs::write(&destination, contents).map_err(|err| -> String { err.to_string() })?;
+
+        println!("Created: {}", destination.to_str().unwrap());
 
         Result::Ok(())
     }
@@ -79,21 +83,31 @@ pub fn run(config: Config) -> Result<(), String> {
 
     if !dir_path.is_dir() {
         return Result::Err(format!(
-            "Template folder is missing. Please create \"{}\".",
+            "Template folder not found. Please create \"{}\".",
             TEMPLATE_FOLDER
         ));
     }
 
-    let templates = get_dir_files(dir_path).map_err(|err| -> String { err.to_string() })?;
-    let selected_templates = if config.generate_all {
+    let mut templates = get_dir_files(dir_path)?;
+    templates = if config.generate_all {
         templates
     } else {
-        select(templates)?
+        let items_to_select: Vec<String> = templates
+            .iter()
+            .map(|template| template.to_str().unwrap().to_string())
+            .collect();
+
+        let selected_items = select(&items_to_select)?;
+
+        templates
+            .into_iter()
+            .filter(|template| selected_items.contains(&template.to_str().unwrap()))
+            .collect()
     };
 
-    let template = Template::new(config, selected_templates);
+    let template = Template::new(config, templates);
 
     template.generate()?;
 
-    return Result::Ok(());
+    Result::Ok(())
 }

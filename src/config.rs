@@ -25,9 +25,7 @@ impl Config {
 
         loop {
             if let Some(arg) = args.next() {
-                let arg_str = arg.as_str();
-
-                match arg_str {
+                match arg.as_str() {
                     ALL_ARG => generate_all = true,
                     DIR_ARG => dir = Some(args.next().expect("Directory not provided.")),
                     REGEX_ARG => {
@@ -36,10 +34,8 @@ impl Config {
                     extra_arg if extra_arg.starts_with("-") => {
                         extra_args.insert(
                             extra_arg.trim_start_matches("-").to_string(),
-                            args.next().expect(&format!(
-                                "No value provided for: {} argument.",
-                                extra_arg.clone()
-                            )),
+                            args.next()
+                                .expect(&format!("No value provided for: {} option.", extra_arg)),
                         );
                     }
 
@@ -47,8 +43,6 @@ impl Config {
                         if component_name.is_none() {
                             component_name = Some(arg)
                         } else {
-                            println!("Unknown argument: \"{}\"", arg);
-
                             return Result::Err(format!("Invalid argument: \"{}\"", arg));
                         }
                     }

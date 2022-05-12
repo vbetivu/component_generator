@@ -1,19 +1,18 @@
 use dialoguer::MultiSelect;
 use regex::Regex;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::constants::PASCAL_CASE_REGEXP;
 
-pub fn get_dir_files(path: &Path) -> Result<Vec<PathBuf>, io::Error> {
+pub fn get_dir_files(path: &Path) -> Result<Vec<PathBuf>, String> {
     let mut templates: Vec<PathBuf> = Vec::new();
 
-    for template_entry in fs::read_dir(path)? {
-        let template_entry = template_entry?;
-        let path = template_entry.path();
+    for template in fs::read_dir(path).map_err(|err| err.to_string())? {
+        let template = template.map_err(|err| err.to_string())?;
+        let path = template.path();
 
-        if !path.is_dir() {
+        if path.is_file() {
             templates.push(path);
         }
     }
@@ -21,7 +20,7 @@ pub fn get_dir_files(path: &Path) -> Result<Vec<PathBuf>, io::Error> {
     if templates.len() != 0 {
         Result::Ok(templates)
     } else {
-        Result::Err(io::Error::new(io::ErrorKind::Other, "Empty directory."))
+        Result::Err(String::from("Template files not found."))
     }
 }
 
@@ -34,23 +33,23 @@ pub fn pascal_to_kebab(text: &str) -> String {
         .join("-")
 }
 
-pub fn select(items: Vec<PathBuf>) -> Result<Vec<PathBuf>, String> {
+pub fn select<'a>(items: &'a Vec<String>) -> Result<Vec<&'a str>, String> {
     let selected_items_indexes = MultiSelect::new()
-        .items(
-            &items
-                .iter()
-                .map(|template| String::from(template.to_str().unwrap()))
-                .collect::<Vec<String>>(),
-        )
+        .items(&items)
         .interact()
         .map_err(|err| -> String { err.to_string() })?;
 
-    Result::Ok(
-        items
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| selected_items_indexes.contains(i))
-            .map(|(_, item)| item.clone())
-            .collect(),
-    )
+    let selected_items = items
+        .iter()
+        .enumerate()
+        .filter_map(|(i, item)| {
+            if selected_items_indexes.contains(&i) {
+                Some(item.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Result::Ok(selected_items)
 }
