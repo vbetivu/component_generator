@@ -6,6 +6,7 @@ use std::{
 };
 
 use config::Config;
+use dialoguer::MultiSelect;
 
 const TEMPLATE_FOLDER: &str = "cg_template";
 
@@ -21,7 +22,21 @@ pub fn run(config: Config) -> Result<(), String> {
         ));
     }
 
-    let templates = get_dir_files(dir_path)?;
+    let mut templates = get_dir_files(dir_path)?;
+    templates = if config.generate_all {
+        templates
+    } else {
+        let items_to_select = templates
+            .iter()
+            .map(|template| template.to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+        let selected_items: Vec<&str> = select(&items_to_select)?;
+
+        templates
+            .into_iter()
+            .filter(|template| selected_items.contains(&template.to_str().unwrap()))
+            .collect::<Vec<PathBuf>>()
+    };
 
     println!("Templates: {:#?}", templates);
 
@@ -45,4 +60,25 @@ fn get_dir_files(path: &Path) -> Result<Vec<PathBuf>, String> {
     } else {
         return Result::Err(String::from("Template files not found."));
     }
+}
+
+fn select<'a>(items: &'a Vec<String>) -> Result<Vec<&'a str>, String> {
+    let selected_items_indexes = MultiSelect::new()
+        .items(&items)
+        .interact()
+        .map_err(|err| err.to_string())?;
+
+    let selected_items = items
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, item)| {
+            if selected_items_indexes.contains(&index) {
+                return Some(item.as_str());
+            }
+
+            return None;
+        })
+        .collect();
+
+    return Result::Ok(selected_items);
 }
