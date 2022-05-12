@@ -18,12 +18,20 @@ struct Template {
 
 impl Template {
     fn generate(&self) -> Result<(), String> {
-        let destination = Path::new(&self.config.dir).join(&self.config.component_name);
+        let destination_dir = Path::new(&self.config.dir);
 
-        fs::create_dir(&destination).map_err(|err| err.to_string())?;
+        if !destination_dir.is_dir() {
+            return Result::Err(String::from("Destination dir not found."));
+        }
+
+        let destination_dir = destination_dir.join(&self.config.component_name);
+
+        fs::create_dir(&destination_dir).map_err(|err| err.to_string())?;
+
+        println!("Created: {}", destination_dir.to_str().unwrap());
 
         for template in &self.templates {
-            self.create_template_file(&template, &destination)?;
+            self.create_template_file(&template, &destination_dir)?;
         }
 
         Result::Ok(())
@@ -32,10 +40,10 @@ impl Template {
     fn create_template_file(
         &self,
         template: &PathBuf,
-        destination: &PathBuf,
+        destination_dir: &PathBuf,
     ) -> Result<(), String> {
         let mut contents = fs::read_to_string(template).unwrap();
-        let new_file_path = destination.join(
+        let destination = destination_dir.join(
             template
                 .file_name()
                 .unwrap()
@@ -50,9 +58,9 @@ impl Template {
             contents = contents.replace(&format!("{{{{{}}}}}", arg), value);
         }
 
-        fs::write(&new_file_path, contents).map_err(|err| err.to_string())?;
+        fs::write(&destination, contents).map_err(|err| err.to_string())?;
 
-        println!("{:#?}", new_file_path);
+        println!("Created: {}", destination.to_str().unwrap());
 
         Result::Ok(())
     }
