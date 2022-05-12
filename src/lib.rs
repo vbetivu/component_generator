@@ -9,10 +9,56 @@ use config::Config;
 use dialoguer::MultiSelect;
 
 const TEMPLATE_FOLDER: &str = "cg_template";
+const COMPONENT_REPLACE_PATTERN: &str = "{{component}}";
+
+struct Template {
+    config: Config,
+    templates: Vec<PathBuf>,
+}
+
+impl Template {
+    fn generate(&self) -> Result<(), String> {
+        let destination = Path::new(&self.config.dir).join(&self.config.component_name);
+
+        fs::create_dir(&destination).map_err(|err| err.to_string())?;
+
+        for template in &self.templates {
+            self.create_template_file(&template, &destination)?;
+        }
+
+        Result::Ok(())
+    }
+
+    fn create_template_file(
+        &self,
+        template: &PathBuf,
+        destination: &PathBuf,
+    ) -> Result<(), String> {
+        let mut contents = fs::read_to_string(template).unwrap();
+        let new_file_path = destination.join(
+            template
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name),
+        );
+
+        contents = contents.replace(COMPONENT_REPLACE_PATTERN, &self.config.component_name);
+
+        for (arg, value) in &self.config.extra_args {
+            contents = contents.replace(&format!("{{{{{}}}}}", arg), value);
+        }
+
+        fs::write(&new_file_path, contents).map_err(|err| err.to_string())?;
+
+        println!("{:#?}", new_file_path);
+
+        Result::Ok(())
+    }
+}
 
 pub fn run(config: Config) -> Result<(), String> {
-    println!("Config: {:#?}", config);
-
     let dir_path = Path::new(TEMPLATE_FOLDER);
 
     if !dir_path.is_dir() {
@@ -38,7 +84,9 @@ pub fn run(config: Config) -> Result<(), String> {
             .collect::<Vec<PathBuf>>()
     };
 
-    println!("Templates: {:#?}", templates);
+    let template = Template { config, templates };
+
+    template.generate()?;
 
     return Result::Ok(());
 }
