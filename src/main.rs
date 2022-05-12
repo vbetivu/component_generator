@@ -8,5 +8,9 @@ fn main() {
         process::exit(1);
     });
 
-    println!("{:#?}", cli_config);
+    if let Err(err) = component_generator::run(cli_config) {
+        eprintln!("Generation error: {}", err);
+
+        process::exit(1);
+    };
 }
