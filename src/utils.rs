@@ -34,7 +34,7 @@ pub fn pascal_to_kebab(text: &str) -> String {
         .join("-")
 }
 
-pub fn select(mut items: Vec<PathBuf>) -> Result<Vec<PathBuf>, String> {
+pub fn select(items: Vec<PathBuf>) -> Result<Vec<PathBuf>, String> {
     let selected_items_indexes = MultiSelect::new()
         .items(
             &items
@@ -45,15 +45,12 @@ pub fn select(mut items: Vec<PathBuf>) -> Result<Vec<PathBuf>, String> {
         .interact()
         .map_err(|err| -> String { err.to_string() })?;
 
-    let mut i = 0;
-
-    while i < items.len() {
-        if selected_items_indexes.contains(&i) {
-            items.remove(i);
-        } else {
-            i += 1;
-        }
-    }
-
-    Result::Ok(items)
+    Result::Ok(
+        items
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| selected_items_indexes.contains(i))
+            .map(|(_, item)| item.clone())
+            .collect(),
+    )
 }
