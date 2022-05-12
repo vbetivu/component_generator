@@ -37,8 +37,6 @@ impl Config {
                         if component_name.is_none() {
                             component_name = Some(arg)
                         } else {
-                            println!("Unknown argument: \"{}\"", arg);
-
                             return Result::Err(format!("Invalid argument: \"{}\"", arg));
                         }
                     }
