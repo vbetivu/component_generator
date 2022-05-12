@@ -1,4 +1,4 @@
-pub const TEMPLATE_FOLDER: &str = "./fg_template";
+pub const TEMPLATE_FOLDER: &str = "./cg_template";
 
 pub const COMPONENT_REPLACE_PATTERN: &str = "{{component}}";
 
