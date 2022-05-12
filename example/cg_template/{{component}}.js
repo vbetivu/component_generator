@@ -1,5 +1,5 @@
 const {{component}} = () => {
-  return ( <div className="c-{{classname}}">{{component}}</div> );
+  return ( <div className="{{classname}}">{{component}}</div> );
 }
  
 export default {{component}};

@@ -7,6 +7,6 @@ describe('{{component}}', () => {
   const wrapper = shallow(<{{component}} />);
 
   it('should render properly', () => {
-    expect(wrapper.is(".c-{{classname}}")).to.be.true;
+    expect(wrapper.is(".{{classname}}")).to.be.true;
   });
 });
