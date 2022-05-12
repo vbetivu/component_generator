@@ -26,16 +26,16 @@ pub fn run(config: Config) -> Result<(), String> {
     templates = if config.generate_all {
         templates
     } else {
-        let items_to_select = templates
+        let items_to_select: Vec<String> = templates
             .iter()
             .map(|template| template.to_str().unwrap().to_string())
-            .collect::<Vec<String>>();
+            .collect();
         let selected_items: Vec<&str> = select(&items_to_select)?;
 
         templates
             .into_iter()
             .filter(|template| selected_items.contains(&template.to_str().unwrap()))
-            .collect::<Vec<PathBuf>>()
+            .collect()
     };
 
     println!("Templates: {:#?}", templates);
@@ -69,7 +69,7 @@ fn select<'a>(items: &'a Vec<String>) -> Result<Vec<&'a str>, String> {
         .map_err(|err| err.to_string())?;
 
     let selected_items = items
-        .into_iter()
+        .iter()
         .enumerate()
         .filter_map(|(index, item)| {
             if selected_items_indexes.contains(&index) {
